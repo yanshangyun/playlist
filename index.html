@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playlists</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kosugi&display=swap" rel="stylesheet">
+    <style>
+        ::selection{
+            background-color:#e3e3e3;
+            /* color:black; */
+        }
+
+        body{
+            font-family:arial;
+            font-size:12px;
+            overflow-x:hidden;
+            background-color:white;
+        }
+
+        img{
+            width:100%;
+            pointer-events:none;
+        }
+
+        a{
+            color:black;
+        }
+
+        h1, h2{
+            font-size:12px;
+            font-weight:normal;
+            text-align:center;
+        }
+
+        h1{
+            text-decoration:underline;
+            text-decoration-style:wavy;
+        }
+
+        .divider{
+            margin:0;
+            padding:0;
+            height:0.5px;
+            width:100%;
+            background-color:black;
+        }
+
+        p{
+            margin:0;
+        }
+
+        .section{
+            width:100vw - 20px;
+            max-width:600px;
+            display:flex;
+            flex-direction:column;
+        }
+
+        #container{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            padding-top:50px;
+        }
+
+        .playlist-wrapper{
+            border:0.5px solid black;
+            padding:20px;
+            width:100%;
+            margin-bottom:10px;
+            text-align:left;
+            display:flex;
+            flex-direction:row;
+            gap:10px;
+            box-sizing:border-box;
+        }
+
+        .play{
+            cursor:pointer;
+            transition:all 0.25s cubic-bezier(.21,0,.1,1);
+            border-top:0.5px black solid;
+        }
+
+        .play:hover{
+            /* transform:translateX(5px); */
+            /* text-shadow:0 0 4px rgb(0, 0, 0); */
+            /* border:0.5px dashed black; */
+            padding:5px 0 5px 5px;
+        }
+
+        #player{
+            width:100px;
+        }
+
+        .info{
+            width:50vw;
+            text-align:center;
+            margin:100px 0 200px 0;
+            min-width:400px;
+            max-width:600px;
+        }
+
+        #coverImage{
+            max-width:100%;
+        }
+
+        .image-wrapper{
+            flex:1;
+        }
+
+        .song-wrapper{
+            flex:1;
+        }
+
+        .text-container{
+            flex:1;
+        }
+
+        @media only screen and (max-width: 600px) {
+            .playlist-wrapper{
+                flex-direction:column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="player" style="width:200; height:200; overflow:hidden;"></div>
+    <div class="section">
+        <p>Ryan's Playlists<br>Powered by <a href="https://are.na" target="_blank">Are.na</a>, from this <a href="https://www.are.na/ryan-yan/playlists-gxdfwejohjk" target="_blank">channel</a>.</p>
+        <p>Each song is a YouTube video that plays in a hidden iFrame.</p>
+        <div id="container">
+        </div>
+    </div>
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        // ARENA
+        const container = document.getElementById("container");
+
+        function fetchChannelContents(slug, container) {
+            fetch(`https://api.are.na/v2/channels/${slug}`)
+            .then(res => res.json())
+            .then(data => {
+                data.contents.forEach(block => {
+                    if (block.base_class === "Channel") {
+                        const channelEl = document.createElement("div");
+                        channelEl.className = "playlist-wrapper";
+                        const playlistName = block.title.split("♫ ").pop();
+                        const playlistTimeArray = block.updated_at.split("T");
+                        const playlistLength = block.length - 1;
+                        const playlistDescription = block.metadata?.description || "no description";
+                        container.appendChild(channelEl);
+
+                        const imageWrapper = document.createElement("div");
+                        imageWrapper.className = "image-wrapper";
+                        channelEl.appendChild(imageWrapper);
+
+                        const textContainer = document.createElement("div");
+                        textContainer.className = "text-container";
+                        channelEl.appendChild(textContainer);
+
+                        const infoWrapper = document.createElement("div");
+                        textContainer.appendChild(infoWrapper);
+                        infoWrapper.innerHTML = `
+                            <div style="background-color:#e3e3e3; width:100%;"><p>${playlistName}</p></div><p>${playlistDescription}</p><br>
+                        `;
+
+                        const songWrapper = document.createElement("div");
+                        songWrapper.className = "song-wrapper";
+                        textContainer.appendChild(songWrapper);
+
+                        const metadata = document.createElement("div");
+                        metadata.innerHTML = `<p style="color:#b5b5b5; padding-top:10px;">${playlistLength} songs • Updated ${playlistTimeArray[0]}</p>`;
+                        textContainer.appendChild(metadata);
+
+                        fetchChannelContents(block.slug, channelEl);
+                    }
+
+                    if (block.base_class === "Block"){                        
+                        switch (block.class) {
+                            case "Image":{
+                                if (block.title === "cover") {
+                                    const imageWrapper = container.querySelector(".image-wrapper")
+                                    const imgEl = document.createElement("img");
+                                    imgEl.id = "coverImage";
+                                    imgEl.src = block.image.display.url;
+                                    imgEl.alt = "cover";
+                                    imgEl.className = "cover";
+                                    imageWrapper.appendChild(imgEl);
+                                }
+                                break;
+                            }
+                            
+                            default:{
+                                const songWrapper = container.querySelector(".song-wrapper");
+                                const linkEl = document.createElement("div");
+                                const link = block.source.url;
+                                const youtubeId = link.split("v=").pop();
+                                linkEl.innerHTML = `${block.title}`;
+                                linkEl.className = "play";
+                                linkEl.setAttribute("data-video", youtubeId);
+                                songWrapper.appendChild(linkEl);
+                                break;
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        fetchChannelContents("playlists-gxdfwejohjk", container);
+
+        //YOUTUBE
+        let currentBtn = null;
+        let currentIframe = null;
+
+        document.addEventListener('click',function(e){
+            const play = e.target.closest('.play');
+            
+            if(play){
+                const videoId = play.dataset.video;
+                
+                if(currentBtn === play){
+                    if(currentIframe){
+                        currentIframe.remove();
+                        currentIframe = null;
+                        play.style.backgroundColor = "";
+                        play.style.color = "";
+                    }else{
+                        altPlayer(videoId);
+                        play.style.backgroundColor = "black";
+                        play.style.color = "white";
+                    }
+                }else{
+                    if(currentBtn){
+                        currentBtn.style.backgroundColor = "";
+                        currentBtn.style.color = "";
+                    }
+                    
+                    if(currentIframe){
+                        currentIframe.remove();
+                    }
+                    
+                    altPlayer(videoId);
+                    
+                    currentBtn = play;
+                    play.style.backgroundColor = "black";
+                    play.style.color = "white";
+                }
+            }
+        });
+
+        function altPlayer(videoId){
+            currentIframe = document.createElement('iframe');
+            currentIframe.src = `https://cdpn.io/pen/debug/oNPzxKo?v=${videoId}&autoplay=1`;
+            currentIframe.style.cssText = `
+                width:0;
+                height:0;
+            `;
+            currentIframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+            currentIframe.allowFullscreen = true;
+            
+            document.body.appendChild(currentIframe);
+        }
+    </script>
+</body>
+</html>
