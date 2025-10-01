@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Playlists</title>
+    <title>Ryan's Playlists</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kosugi&display=swap" rel="stylesheet">
@@ -49,6 +50,14 @@
         }
 
         p{
+            margin:0;
+        }
+
+        li{
+            margin:0;
+        }
+
+        ul{
             margin:0;
         }
 
@@ -129,8 +138,17 @@
 <body>
     <div id="player" style="width:200; height:200; overflow:hidden;"></div>
     <div class="section">
-        <p>Ryan's Playlists<br>Powered by <a href="https://are.na" target="_blank">Are.na</a>, from this <a href="https://www.are.na/ryan-yan/playlists-gxdfwejohjk" target="_blank">channel</a>.</p>
-        <p>Each song is a YouTube video that plays in a hidden iFrame.</p>
+        <details>
+            <summary>Ryan's Playlists</summary>
+            <p>Powered by <a href="https://are.na" target="_blank">Are.na</a>, from this <a href="https://www.are.na/ryan-yan/playlists-gxdfwejohjk" target="_blank">channel</a>.</p>
+            <p>Each song is a YouTube video that plays in a hidden iFrame.</p>
+            <s>Missing features:
+                <ul>
+                    <li>Playlist doesn't progress when song ends</li>
+                    <li>Pausing requires finding the clicked song</li>
+                </ul>
+            </s>
+        </details>
         <div id="container">
         </div>
     </div>
@@ -143,13 +161,15 @@
             fetch(`https://api.are.na/v2/channels/${slug}`)
             .then(res => res.json())
             .then(data => {
-                data.contents.forEach(block => {
-                    if (block.base_class === "Channel") {
-                        const channelEl = document.createElement("div");
+                const channels = data.contents.filter(block => block.base_class === "Channel");
+                const blocks = data.contents.filter(block => block.base_class === "Block");
+
+                channels.reverse().forEach(block => {
+                    const channelEl = document.createElement("div");
                         channelEl.className = "playlist-wrapper";
                         const playlistName = block.title.split("♫ ").pop();
                         const playlistTimeArray = block.updated_at.split("T");
-                        const playlistLength = block.length - 1;
+                        const playlistLength = block.length - 1; //i know this is stupid but whatever
                         const playlistDescription = block.metadata?.description || "no description";
                         container.appendChild(channelEl);
 
@@ -176,34 +196,33 @@
                         textContainer.appendChild(metadata);
 
                         fetchChannelContents(block.slug, channelEl);
-                    }
+                });
 
-                    if (block.base_class === "Block"){                        
-                        switch (block.class) {
-                            case "Image":{
-                                if (block.title === "cover") {
-                                    const imageWrapper = container.querySelector(".image-wrapper")
-                                    const imgEl = document.createElement("img");
-                                    imgEl.id = "coverImage";
-                                    imgEl.src = block.image.display.url;
-                                    imgEl.alt = "cover";
-                                    imgEl.className = "cover";
-                                    imageWrapper.appendChild(imgEl);
-                                }
-                                break;
+                blocks.forEach(block => {
+                    switch (block.class) {
+                        case "Image":{
+                            if (block.title === "cover") {
+                                const imageWrapper = container.querySelector(".image-wrapper")
+                                const imgEl = document.createElement("img");
+                                imgEl.id = "coverImage";
+                                imgEl.src = block.image.display.url;
+                                imgEl.alt = "cover";
+                                imgEl.className = "cover";
+                                imageWrapper.appendChild(imgEl);
                             }
-                            
-                            default:{
-                                const songWrapper = container.querySelector(".song-wrapper");
-                                const linkEl = document.createElement("div");
-                                const link = block.source.url;
-                                const youtubeId = link.split("v=").pop();
-                                linkEl.innerHTML = `${block.title}`;
-                                linkEl.className = "play";
-                                linkEl.setAttribute("data-video", youtubeId);
-                                songWrapper.appendChild(linkEl);
-                                break;
-                            }
+                            break;
+                        }
+                        
+                        default:{
+                            const songWrapper = container.querySelector(".song-wrapper");
+                            const linkEl = document.createElement("div");
+                            const link = block.source.url;
+                            const youtubeId = link.split("v=").pop();
+                            linkEl.innerHTML = `${block.title}`;
+                            linkEl.className = "play";
+                            linkEl.setAttribute("data-video", youtubeId);
+                            songWrapper.appendChild(linkEl);
+                            break;
                         }
                     }
                 });
@@ -254,7 +273,7 @@
 
         function altPlayer(videoId){
             currentIframe = document.createElement('iframe');
-            currentIframe.src = `https://cdpn.io/pen/debug/oNPzxKo?v=${videoId}&autoplay=1`;
+            currentIframe.src = `https://cdpn.io/pen/debug/oNPzxKo?v=${videoId}&autoplay=1`; //
             currentIframe.style.cssText = `
                 width:0;
                 height:0;
