@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kosugi&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
     <style>
         ::selection{
             background-color:#e3e3e3;
@@ -62,7 +63,7 @@
         }
 
         .section{
-            width:100vw - 20px;
+            width:calc(100vw - 20px);
             max-width:600px;
             display:flex;
             flex-direction:column;
@@ -154,7 +155,7 @@
     </div>
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
-        // ARENA
+        // ARENA + COLOR THIEF
         const container = document.getElementById("container");
 
         function fetchChannelContents(slug, container) {
@@ -166,65 +167,79 @@
 
                 channels.reverse().forEach(block => {
                     const channelEl = document.createElement("div");
-                        channelEl.className = "playlist-wrapper";
-                        const playlistName = block.title.split("♫ ").pop();
-                        const playlistTimeArray = block.updated_at.split("T");
-                        const playlistLength = block.length - 1; //i know this is stupid but whatever
-                        const playlistDescription = block.metadata?.description || "no description";
-                        container.appendChild(channelEl);
+                    channelEl.className = "playlist-wrapper";
 
-                        const imageWrapper = document.createElement("div");
-                        imageWrapper.className = "image-wrapper";
-                        channelEl.appendChild(imageWrapper);
+                    const playlistName = block.title.split("♫ ").pop();
+                    const playlistTimeArray = block.updated_at.split("T");
+                    const playlistLength = block.length - 1;
+                    const playlistDescription = block.metadata?.description || "no description";
 
-                        const textContainer = document.createElement("div");
-                        textContainer.className = "text-container";
-                        channelEl.appendChild(textContainer);
+                    container.appendChild(channelEl);
 
-                        const infoWrapper = document.createElement("div");
-                        textContainer.appendChild(infoWrapper);
-                        infoWrapper.innerHTML = `
-                            <div style="background-color:#e3e3e3; width:100%;"><p>${playlistName}</p></div><p>${playlistDescription}</p><br>
-                        `;
+                    const imageWrapper = document.createElement("div");
+                    imageWrapper.className = "image-wrapper";
+                    channelEl.appendChild(imageWrapper);
 
-                        const songWrapper = document.createElement("div");
-                        songWrapper.className = "song-wrapper";
-                        textContainer.appendChild(songWrapper);
+                    const textContainer = document.createElement("div");
+                    textContainer.className = "text-container";
+                    channelEl.appendChild(textContainer);
 
-                        const metadata = document.createElement("div");
-                        metadata.innerHTML = `<p style="color:#b5b5b5; padding-top:10px;">${playlistLength} songs • Updated ${playlistTimeArray[0]}</p>`;
-                        textContainer.appendChild(metadata);
+                    const infoWrapper = document.createElement("div");
+                    textContainer.appendChild(infoWrapper);
 
-                        fetchChannelContents(block.slug, channelEl);
-                });
+                    const songWrapper = document.createElement("div");
+                    songWrapper.className = "song-wrapper";
+                    textContainer.appendChild(songWrapper);
 
-                blocks.forEach(block => {
-                    switch (block.class) {
-                        case "Image":{
-                            if (block.title === "cover") {
-                                const imageWrapper = container.querySelector(".image-wrapper")
-                                const imgEl = document.createElement("img");
-                                imgEl.id = "coverImage";
-                                imgEl.src = block.image.display.url;
-                                imgEl.alt = "cover";
-                                imgEl.className = "cover";
-                                imageWrapper.appendChild(imgEl);
-                            }
-                            break;
-                        }
+                    const metadata = document.createElement("div");
+                    metadata.innerHTML = `<p style="color:#b5b5b5; padding-top:10px;">${playlistLength} songs • Updated ${playlistTimeArray[0]}</p>`;
+                    textContainer.appendChild(metadata);
+
+                    fetch(`https://api.are.na/v2/channels/${block.slug}`)
+                        .then(res => res.json())
+                        .then(subData => {
+                            const subBlocks = subData.contents;
+
+                            subBlocks.forEach(subBlock => {
+                                if (subBlock.class === "Image" && subBlock.title === "cover") {
+                                    const imgEl = document.createElement("img");
+                                    // imgEl.id = "coverImage";
+                                    imgEl.src = subBlock.image.display.url;
+                                    imgEl.alt = "cover";
+                                    imgEl.className = "cover";
+                                    imageWrapper.appendChild(imgEl);
+
+                                    const img = new Image();
+                                    img.crossOrigin = "anonymous";
+                                    img.src = imgEl.src;
+
+                                    img.onload = () => {
+                                        const colorThief = new ColorThief();
+                                        const [r, g, b] = colorThief.getColor(img);
+                                        const bgColor = `rgb(${r}, ${g}, ${b})`;
+
+                                        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                                        const textColor = brightness > 180 ? "black" : "white";
+
+                                        infoWrapper.innerHTML = `
+                                            <p style="background-color:${bgColor}; color:${textColor};width:100%;">${playlistName}</p>
+                                            <p>${playlistDescription}</p><br>
+                                        `;
+                                    };
+                                } else if (subBlock.class === "Media" || subBlock.class === "Link") {
+                                    const linkEl = document.createElement("div");
+                                    const link = subBlock.source?.url;
+                                    if (!link || !link.includes("youtube.com")) return;
+
+                                    const youtubeId = link.split("v=").pop();
+                                    linkEl.innerText = subBlock.title;
+                                    linkEl.className = "play";
+                                    linkEl.setAttribute("data-video", youtubeId);
+                                    songWrapper.appendChild(linkEl);
+                                }
+                            });
+                        });
                         
-                        default:{
-                            const songWrapper = container.querySelector(".song-wrapper");
-                            const linkEl = document.createElement("div");
-                            const link = block.source.url;
-                            const youtubeId = link.split("v=").pop();
-                            linkEl.innerHTML = `${block.title}`;
-                            linkEl.className = "play";
-                            linkEl.setAttribute("data-video", youtubeId);
-                            songWrapper.appendChild(linkEl);
-                            break;
-                        }
-                    }
                 });
             });
         }
